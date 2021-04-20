@@ -18,10 +18,12 @@ body {
     align-items: center;
     height: 150px;
     padding: 0px 30px 0px 30px;
+    background: #345b7b;
 }
 .control-word {
     font-size: 24px;
     padding: 0px 20px 0px 20px;
+    color: white;
 }
 .dash-dropdown {
     flex-grow: 2;
@@ -30,9 +32,72 @@ body {
 .VirtualizedSelectOption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 
-.graphs {
-    margin: 30px;
+
+
+.central-content {
+    padding: 30px;
 }
+
+.section-header {
+    font-size: 20px;
+    padding-top: 40px;
+    padding-bottom: 30px;
+}
+
+
+.links-container {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+}
+
+.links-container > .cell {
+    display: flex;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    align-items: center;
+    flex-direction: row;
+}
+
+.cell .column {
+    padding: 8px 12px;
+}
+
+.cell span.index {
+    padding: 0px 8px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid #ccc;
+}
+
+.cell span.symbol {
+
+}
+
+.cell span.name {
+    flex: 2;
+    color: #aaa;
+    padding: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.cell span.indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 5px solid #7043ed;
+    box-sizing: border-box;
+    margin: 0px 8px;
+}
+
+a {
+    display: contents;
+}
+
+
 
 .footer {
     padding: 30px;

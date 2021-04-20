@@ -4,7 +4,7 @@ import dash_core_components as dcc
 from dash.dependencies import Input, Output
 import pandas as pd
 import plotly.graph_objects as go
-from utils.tickers import load_tickers
+from utils.tickers import Ticker, load_tickers
 from utils.load import load_index
 import typing as t
 from utils.filters import StockSelection, TimeSelection
@@ -51,6 +51,12 @@ def apply_time_filter(results: pd.DataFrame, time_selection: str):
 # ===============
 # BASE COMPONENTS
 # ===============
+
+
+def make_section_heading(title: str, info: str = None):
+    return html.Div(children=[
+        html.Div(className="section-header", children=title),
+    ])
 
 
 def make_stock_dropdown():
@@ -112,6 +118,20 @@ def make_category_dropdown():
     )
 
 
+def make_stock_link_cell(index: int, ticker: Ticker):
+    return html.Div(
+        className="cell",
+        children=[
+            html.Span(className="column index", children=index),
+            html.Span(className="column symbol", children=ticker.symbol),
+            html.Span(className="column name", children=ticker.name),
+            html.A(href=f"https://finance.yahoo.com/quote/{ticker.symbol}", target="_blank", children=[
+                html.Span(className="indicator"),
+            ]),
+        ],
+    )
+
+
 # ========
 # MAIN APP
 # ========
@@ -136,12 +156,21 @@ app.layout = html.Div([
         ]),
     ]),
 
-    # graphs
-    html.Div(className="graphs", children=[
+    html.Div(className="central-content", children=[
+        # graphs
+        make_section_heading("Stock Symbol Frequency"),
         dcc.Graph(id="trend_graph"),
+        make_section_heading("Relative Stock Symbol Frequency"),
         dcc.Graph(id="relative_trend_graph"),
+        make_section_heading("Stock Rankings"),
         dcc.Graph(id="ranking_graph"),
+
+        # links
+        make_section_heading("Financial Information"),
+        html.Div(id="links_container", className="links-container"),
+
     ]),
+
 
     # disclaimer
     html.Div(className="footer", children=[
@@ -183,6 +212,7 @@ def handle_category_visiblity(selected_stock):
     Output(component_id="trend_graph", component_property="figure"),
     Output(component_id="relative_trend_graph", component_property="figure"),
     Output(component_id="ranking_graph", component_property="figure"),
+    Output(component_id="links_container", component_property="children"),
     Input(component_id="stock_selection", component_property="value"),
     Input(component_id="time_selection", component_property="value"),
     Input(component_id="category_selection", component_property="value"),
@@ -206,20 +236,20 @@ def handle_visible_data(selected_stock, selected_time, selected_category):
     # create trend figure
     trend_fig = go.Figure()
     trend_fig.update_layout(
-        title="Stock Symbol Frequency",
         xaxis_title="Time",
         yaxis_title="Number of Occurrences",
         legend=dict(
             traceorder="reversed",
         ),
+        margin=dict(t=0),
     )
 
     # create relative trend graph
     rel_trend_fig = go.Figure()
     rel_trend_fig.update_layout(
-        title="Relative Stock Symbol Frequency",
         xaxis_title="Time",
-        yaxis_title="Percentage of Messages",
+        yaxis_title="Percentage of Occurrences",
+        margin=dict(t=0),
     )
 
     # add each ticker to the trend graphs
@@ -253,9 +283,9 @@ def handle_visible_data(selected_stock, selected_time, selected_category):
     # create rank figure
     rank_fig = go.Figure()
     rank_fig.update_layout(
-        title="Stock Rankings",
         xaxis_title="Total Number of Occurrences",
         yaxis_title="Stock",
+        margin=dict(t=0),
     )
     rank_fig.add_trace(go.Bar(
         y=[f"({x.symbol}) {x.name}" for x in result_tickers],
@@ -263,7 +293,10 @@ def handle_visible_data(selected_stock, selected_time, selected_category):
         orientation="h",
     ))
 
-    return trend_fig, rel_trend_fig, rank_fig
+    # make link cells
+    link_cells = [make_stock_link_cell(i + 1, x) for i, x in enumerate(result_tickers[::-1])]
+
+    return trend_fig, rel_trend_fig, rank_fig, link_cells
 
 
 if __name__ == "__main__":
