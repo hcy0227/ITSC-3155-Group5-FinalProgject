@@ -1,85 +1,99 @@
 import dash
 import dash_html_components as html
 import dash_core_components as dcc
+from dash.dependencies import Input, Output
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
-from pathlib import Path
-import numpy as np
-import datetime as dt
+from utils.tickers import load_tickers
+from utils.load import load_index
+import typing as t
+from utils.filters import StockSelection, TimeSelection
+
+tickers = load_tickers("NYSE", "NASDAQ")
+keyed_tickers = {x.symbol: x for x in tickers}
+index = load_index("compiled_index_min10")
 
 
-def load_data(path: Path):
-    # read only necessary columns from dataset
-    df = pd.read_csv(path, parse_dates=["timestamp"], usecols=["body", "timestamp"])
-    # trim to every 3rd row
-    df = df.iloc[::3, :]
-    # remap the timestamps to only the date
-    df["timestamp"] = df.timestamp.dt.date
-    # clean body of all messages to only letters and whitespace
-    df.body = df.body.str.upper().str.replace("[^a-zA-Z\s]", " ", regex=True)
-    # sort by timestamp
-    df.sort_values("timestamp", inplace=True)
+def apply_ticker_filter(results: pd.DataFrame, stock: StockSelection, sector: str):
+    f = None
+    if stock.is_top_n():
+        if sector != "all":
+            # filter by matching sector if showing top n stocks
+            f = [x for x in tickers if x.sector == sector]
+    else:
+        # filter to only selected ticker
+        f = [keyed_tickers[stock.symbol]]
 
-    df["occurances_gme"] = df.body.str.count(" GME ")
-    # df.groupby(df.timestamp.dt.date)
-    # for i in range(1000):
-    #     c = df.body.str.count(" AMC ")
-    #     print(i)
-    df = df.groupby(df.timestamp).sum()
-    all_dates = pd.date_range(df.index.min(), df.index.max())
-    print(df.index.min(), df.index.max())
-    df = df.reindex(all_dates, fill_value=0)
-    print(df)
-    fig = px.line(x=df.index, y=df.occurances_gme, title="GME over time")
-    fig.show()
+    if f is not None:
+        # apply filter
+        results = results[results.symbol.isin(x.symbol for x in f)]
+    return results
 
 
-def make_stock_dropdown_option(company, ticker):
-    return dict(
-        label=f"{company} ({ticker})",
-        value=f"single|{ticker}",
+def apply_time_filter(results: pd.DataFrame, time_selection: str):
+    selection = TimeSelection.from_value(time_selection)
+    if selection.min_date is not None:
+        results = results[results.date >= pd.to_datetime(selection.min_date)]
+    return results
+
+
+def make_stock_dropdown():
+    options = []
+    # add top options
+    for n in [1, 2, 5, 10, 20]:
+        options.append(dict(
+            label=f"the top {n} stocks",
+            value=StockSelection(top=n).value(),
+        ))
+    # add symbol options
+    for ticker in tickers:
+        options.append(dict(
+            label=f"({ticker.symbol}) {ticker.name}",
+            value=StockSelection(symbol=ticker.symbol).value(),
+        ))
+    # make component
+    return dcc.Dropdown(
+        id="stock_selection",
+        options=options,
+        value=StockSelection(top=5).value(),
+        placeholder="Select stocks",
     )
 
 
-def make_fake_trend_fig():
-    fig = go.Figure()
-    fig.update_layout(
-        title="Message Frequency",
-        xaxis_title="Time",
-        yaxis_title="Number of Messages",
+def make_time_dropdown():
+    return dcc.Dropdown(
+        id="time_selection",
+        options=[
+            dict(label="this week", value="week"),
+            dict(label="the past 30 days", value="month"),
+            dict(label="the past 90 days", value="3month"),
+            dict(label="this year", value="year"),
+            dict(label="all time", value="all"),
+        ],
+        value="month",
+        placeholder="Select time frame",
     )
-    x = np.linspace(0, 1000, 1000)
-    fig.add_trace(go.Scatter(x=x, y=x * 0.5 + 10, mode="lines", name="A"))
-    fig.add_trace(go.Scatter(x=x, y=x * 0.8 - 100, mode="lines", name="B"))
-    fig.add_trace(go.Scatter(x=x, y=(x / 100) ** 0.5 * 300, mode="lines", name="C"))
-    return fig
 
 
-def make_fake_ranking_fig():
-    fig = go.Figure()
-    fig.update_layout(
-        title="Stock Rankings",
-        xaxis_title="Stock",
-        yaxis_title="Total Number of Messages",
+def make_category_dropdown():
+    # find unique categories given all tickers
+    unique_sectors = set(ticker.sector for ticker in tickers)
+    options = [
+        dict(label="All Industries", value="all"),
+    ]
+    # add each unique category
+    for x in unique_sectors:
+        if x is not None:
+            options.append(dict(label=x, value=f"{x}"))
+    return dcc.Dropdown(
+        id="category_selection",
+        options=options,
+        value="all",
+        placeholder="Select industry",
     )
-    stocks = ["GameStop (GME)", "Amazon (AMZN)", "Apple (APPL)", "AMC Theaters (AMC)"]
-
-    fig.add_trace(go.Bar(
-        y=stocks,
-        x=sorted([6500, 400, 500, 2000]),
-        orientation="h",
-    ))
-
-    # x = np.linspace(0, 1000, 1000)
-    # fig.add_trace(go.Scatter(x=x, y=x * 0.5 + 10, mode="lines", name="A"))
-    # fig.add_trace(go.Scatter(x=x, y=x * 0.8 - 100, mode="lines", name="B"))
-    # fig.add_trace(go.Scatter(x=x, y=(x / 100) ** 0.5 * 300, mode="lines", name="C"))
-    return fig
 
 
 app = dash.Dash("WallStreetBets Tracker")
-
 app.layout = html.Div([
     # header
     html.Div(className="header", children=[
@@ -88,52 +102,20 @@ app.layout = html.Div([
 
     # controls
     html.Div(className="controls", children=[
-        html.Span("Show me"),
-        dcc.Dropdown(
-            id="stock_selection",
-            options=[
-                dict(label="the top 1 stocks", value="top|1"),
-                dict(label="the top 2 stocks", value="top|2"),
-                dict(label="the top 5 stocks", value="top|5"),
-                dict(label="the top 10 stocks", value="top|10"),
-                dict(label="the top 20 stocks", value="top|20"),
-                make_stock_dropdown_option("GameStop", "GME"),
-                make_stock_dropdown_option("Amazon", "AMZN"),
-                make_stock_dropdown_option("Apple", "AAPL"),
-            ],
-            value="top|5",
-            placeholder="Select stocks",
-        ),
-        html.Span("for"),
-        dcc.Dropdown(
-            id="time_selection",
-            options=[
-                dict(label="this week", value="week"),
-                dict(label="this month", value="month"),
-                dict(label="this year", value="year"),
-                dict(label="all time", value="all"),
-            ],
-            value="week",
-            placeholder="Select time frame",
-        ),
-        html.Span("in"),
-        dcc.Dropdown(
-            id="category_selection",
-            options=[
-                dict(label="All Industries", value="all"),
-                dict(label="Technology", value="technology"),
-                dict(label="Transportation", value="transportation"),
-                dict(label="Retail", value="retail"),
-            ],
-            value="all",
-            placeholder="Select industry",
-        ),
+        html.Span(className="control-word", children="Show me"),
+        make_stock_dropdown(),
+        html.Span(className="control-word", children="for"),
+        make_time_dropdown(),
+        html.Div(id="category_container", children=[
+            html.Span(className="control-word", children="in"),
+            make_category_dropdown(),
+        ]),
     ]),
 
     # graphs
     html.Div(className="graphs", children=[
-        dcc.Graph(id="trend_graph", figure=make_fake_trend_fig()),
-        dcc.Graph(id="ranking_graph", figure=make_fake_ranking_fig()),
+        dcc.Graph(id="trend_graph"),
+        dcc.Graph(id="ranking_graph"),
     ]),
 
     # disclaimer
@@ -149,11 +131,77 @@ app.layout = html.Div([
 ])
 
 
-def main():
-    print("main()")
-    load_data("../data/reddit_wsb.csv")
+@app.callback(
+    Output(component_id="category_container", component_property="style"),
+    Input(component_id="stock_selection", component_property="value"),
+)
+def handle_category_visiblity(selected_stock):
+    stock = StockSelection.from_value(selected_stock)
+    if stock.is_top_n():
+        # show for selecting top n stocks
+        return dict(display="contents")
+    else:
+        # hide for selecting single stocks
+        return dict(display="none")
+
+
+@app.callback(
+    Output(component_id="trend_graph", component_property="figure"),
+    Output(component_id="ranking_graph", component_property="figure"),
+    Input(component_id="stock_selection", component_property="value"),
+    Input(component_id="time_selection", component_property="value"),
+    Input(component_id="category_selection", component_property="value"),
+)
+def handle_visible_data(selected_stock, selected_time, selected_category):
+    stock = StockSelection.from_value(selected_stock)
+
+    # reduce data to only selected stocks and time range
+    results = index
+    results = apply_ticker_filter(results, stock, selected_category)
+    results = apply_time_filter(results, selected_time)
+
+    # calculate total occurrences of resulting stock
+    totals = results.groupby(results.symbol).occurrences.sum().sort_values(ascending=True)
+    # reduce to desired amount if necessary
+    if stock.is_top_n():
+        totals = totals[-stock.top:]
+    # get tickers from results
+    result_tickers = [keyed_tickers[x] for x in totals.index]
+
+    # create trend figure
+    trend_fig = go.Figure()
+    trend_fig.update_layout(
+        title="Stock Symbol Frequency",
+        xaxis_title="Time",
+        yaxis_title="Number of Occurrences",
+    )
+    # add each ticker trend to the graph
+    for ticker in result_tickers:
+        # filter to only this ticker
+        trend = results[results.symbol == ticker.symbol]
+        # reduce to a single series of occurrences indexed by date
+        trend = trend.set_index(trend.date).occurrences
+        # reindex the series so missing dates are filled with 0
+        filled_dates = pd.date_range(results.date.min(), results.date.max(), freq="D")
+        trend = trend.reindex(filled_dates, fill_value=0)
+        # make line component and add to graph
+        trend_fig.add_trace(go.Scatter(x=trend.index, y=trend, mode="lines", name=ticker.symbol))
+
+    # create rank figure
+    rank_fig = go.Figure()
+    rank_fig.update_layout(
+        title="Stock Rankings",
+        xaxis_title="Total Number of Occurrences",
+        yaxis_title="Stock",
+    )
+    rank_fig.add_trace(go.Bar(
+        y=[f"({x.symbol}) {x.name}" for x in result_tickers],
+        x=totals,
+        orientation="h",
+    ))
+
+    return trend_fig, rank_fig
 
 
 if __name__ == "__main__":
-    main()
-    # app.run_server(debug=True, dev_tools_hot_reload=True)
+    app.run_server(debug=False, dev_tools_hot_reload=True)
