@@ -4,7 +4,7 @@ import typing as t
 from utils.cleaners import clean_symbol, clean_stock_name
 
 
-# easy to use class to hold stock information
+# class to hold stock information
 class Ticker:
     # initialize with descriptive attributes
     def __init__(self, symbol: str, name: str, sector: str, industry: str):
@@ -13,7 +13,7 @@ class Ticker:
         self.sector = sector
         self.industry = industry
 
-    # convenience function to make debug statements more useful
+    # convenience function to make debug statements more readable
     def __str__(self):
         return f"Ticker(symbol='{self.symbol}', name='{self.name}')"
 
@@ -30,6 +30,7 @@ def load_tickers(*args: str) -> t.List[Ticker]:
             f"../data/{e}_stock_tickers.csv",
             usecols=["Symbol", "Name", "Sector", "Industry"]
         )
+        # don't like nan in the dataframe, so use None because it's cleaner for the code
         df = df.replace({np.nan: None})
         # map rows of file to cleaner Ticker class
         for r in df.itertuples():

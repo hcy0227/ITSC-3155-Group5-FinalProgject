@@ -8,7 +8,7 @@ def clean_symbol(s: str):
 
 # clean stock name to remove extra words after company name
 def clean_stock_name(name: str) -> str:
-    endings = ["Inc", "Company", "Corp"]
+    endings = ["Inc", "Company", "Corp", "Limited"]
     for e in endings:
         i = name.find(e)
         if i != -1:

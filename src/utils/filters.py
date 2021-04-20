@@ -47,12 +47,16 @@ class StockSelection:
             return f"StockSelection(symbol={self.symbol})"
 
 
+# class to handle time filtering options
 class TimeSelection:
+    # represent filtering the data by a minimum date
     def __init__(self, min_date: dt.date = None):
         self.min_date = min_date
 
+    # decode a time selection value from the dropdown on the app
     @classmethod
     def from_value(cls, value):
+        # get reference to today because filters are based on the current time
         today = dt.datetime.now().date()
         if value == "all":
             # no limit
@@ -69,7 +73,10 @@ class TimeSelection:
         elif value == "year":
             # >= past 365 days
             return cls(min_date=today - dt.timedelta(days=365 - 1))
+        # safety for invalid values
         raise ValueError(f"Unknown time selection value: {value}")
 
+    # convenience function so debug statements are more readable
     def __str__(self):
-        return f"TimeSelection(min_date={self.min_date.isoformat()})"
+        min_date_str = "None" if self.min_date is None else self.min_date.isoformat()
+        return f"TimeSelection(min_date={min_date_str})"

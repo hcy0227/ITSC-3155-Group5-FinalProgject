@@ -16,9 +16,11 @@ def create_index(name: str, ts: t.List[Ticker], minimum_occurrences: int = 10):
 
         # index each ticker
         for i, ticker in enumerate(ts):
-            # find number of occurrences
+            # find number of occurrences in messages
             occurrences = df.body.str.count(f" {ticker.symbol} ").rename("occurrences")
+            # exclude days where no reference to this stock
             occurrences = occurrences[occurrences > 0]
+            # count total
             total = occurrences.sum()
             # only include tickers mentioned a minimum amount
             if total < minimum_occurrences:
@@ -31,7 +33,9 @@ def create_index(name: str, ts: t.List[Ticker], minimum_occurrences: int = 10):
                 df.date[occurrences.index],
                 occurrences,
             ], axis=1)
+            # aggregate count by date
             partial_index = partial_index.groupby(partial_index.date).sum().reset_index()
+            # add this stock's symbol to the dataframe
             partial_index["symbol"] = pd.Series(ticker.symbol, index=partial_index.index)
 
             # append partial index to file

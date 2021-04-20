@@ -9,9 +9,20 @@ from utils.load import load_index
 import typing as t
 from utils.filters import StockSelection, TimeSelection
 
+
+# =========
+# DATA LOAD
+# =========
+
+
 tickers = load_tickers("NYSE", "NASDAQ")
 keyed_tickers = {x.symbol: x for x in tickers}
 index = load_index("compiled_index_min10")
+
+
+# =======
+# FILTERS
+# =======
 
 
 def apply_ticker_filter(results: pd.DataFrame, stock: StockSelection, sector: str):
@@ -37,6 +48,11 @@ def apply_time_filter(results: pd.DataFrame, time_selection: str):
     return results
 
 
+# ===============
+# BASE COMPONENTS
+# ===============
+
+
 def make_stock_dropdown():
     options = []
     # add top options
@@ -57,6 +73,7 @@ def make_stock_dropdown():
         options=options,
         value=StockSelection(top=5).value(),
         placeholder="Select stocks",
+        clearable=False,
     )
 
 
@@ -72,6 +89,7 @@ def make_time_dropdown():
         ],
         value="month",
         placeholder="Select time frame",
+        clearable=False,
     )
 
 
@@ -90,7 +108,13 @@ def make_category_dropdown():
         options=options,
         value="all",
         placeholder="Select industry",
+        clearable=False,
     )
+
+
+# ========
+# MAIN APP
+# ========
 
 
 app = dash.Dash("WallStreetBets Tracker")
@@ -115,6 +139,7 @@ app.layout = html.Div([
     # graphs
     html.Div(className="graphs", children=[
         dcc.Graph(id="trend_graph"),
+        dcc.Graph(id="relative_trend_graph"),
         dcc.Graph(id="ranking_graph"),
     ]),
 
@@ -122,11 +147,20 @@ app.layout = html.Div([
     html.Div(className="footer", children=[
         html.H2("Disclaimer"),
         html.P(className="legal-text",
-               children="We do not provide personal investment advice and We are not a qualified licensed investment advisor. We will not and cannot be held liable for any actions you take as a result of anything you read in the WSB Trackers."),
+               children="We do not provide personal investment advice and We are not a qualified licensed investment "
+                        "adviser. We will not and cannot be held liable for any actions you take as a result of "
+                        "anything you read in the WSB Trackers."),
         html.P(className="legal-text",
-               children="All information found here, including any ideas, opinions, views, predictions, forecasts, commentaries, suggestions, or stock picks, expressed or implied herein, are for informational, entertainment or educational purposes only and should not be construed as personal investment advice. While the information provided is believed to be accurate, it may include errors or inaccuracies."),
+               children="All information found here, including any ideas, opinions, views, predictions, forecasts, "
+                        "commentaries, suggestions, or stock picks, expressed or implied herein, "
+                        "are for informational, entertainment or educational purposes only and should not be "
+                        "construed as personal investment advice. While the information provided is believed to be "
+                        "accurate, it may include errors or inaccuracies."),
         html.P(className="legal-text",
-               children="Conduct your own due diligence, or consult a licensed financial advisor or broker before making any and all investment decisions. Any investments, trades, speculations, or decisions made on the basis of any information found on this site, expressed or implied herein, are committed at your own risk, financial or otherwise."),
+               children="Conduct your own due diligence, or consult a licensed financial adviser or broker before "
+                        "making any and all investment decisions. Any investments, trades, speculations, or decisions "
+                        "made on the basis of any information found on this site, expressed or implied herein, "
+                        "are committed at your own risk, financial or otherwise."),
     ]),
 ])
 
@@ -147,6 +181,7 @@ def handle_category_visiblity(selected_stock):
 
 @app.callback(
     Output(component_id="trend_graph", component_property="figure"),
+    Output(component_id="relative_trend_graph", component_property="figure"),
     Output(component_id="ranking_graph", component_property="figure"),
     Input(component_id="stock_selection", component_property="value"),
     Input(component_id="time_selection", component_property="value"),
@@ -174,8 +209,20 @@ def handle_visible_data(selected_stock, selected_time, selected_category):
         title="Stock Symbol Frequency",
         xaxis_title="Time",
         yaxis_title="Number of Occurrences",
+        legend=dict(
+            traceorder="reversed",
+        ),
     )
-    # add each ticker trend to the graph
+
+    # create relative trend graph
+    rel_trend_fig = go.Figure()
+    rel_trend_fig.update_layout(
+        title="Relative Stock Symbol Frequency",
+        xaxis_title="Time",
+        yaxis_title="Percentage of Messages",
+    )
+
+    # add each ticker to the trend graphs
     for ticker in result_tickers:
         # filter to only this ticker
         trend = results[results.symbol == ticker.symbol]
@@ -184,8 +231,24 @@ def handle_visible_data(selected_stock, selected_time, selected_category):
         # reindex the series so missing dates are filled with 0
         filled_dates = pd.date_range(results.date.min(), results.date.max(), freq="D")
         trend = trend.reindex(filled_dates, fill_value=0)
-        # make line component and add to graph
-        trend_fig.add_trace(go.Scatter(x=trend.index, y=trend, mode="lines", name=ticker.symbol))
+        # make line component and add to absolute graph
+        trend_fig.add_trace(go.Scatter(
+            x=trend.index,
+            y=trend,
+            mode="lines+markers",
+            line_shape="spline",
+            name=ticker.symbol,
+        ))
+        # make line component and add to relative graph
+        rel_trend_fig.add_trace(go.Scatter(
+            x=trend.index,
+            y=trend,
+            mode="lines+markers",
+            line_shape="spline",
+            stackgroup="one",
+            groupnorm="percent",
+            name=ticker.symbol
+        ))
 
     # create rank figure
     rank_fig = go.Figure()
@@ -200,8 +263,8 @@ def handle_visible_data(selected_stock, selected_time, selected_category):
         orientation="h",
     ))
 
-    return trend_fig, rank_fig
+    return trend_fig, rel_trend_fig, rank_fig
 
 
 if __name__ == "__main__":
-    app.run_server(debug=False, dev_tools_hot_reload=True)
+    app.run_server(debug=True, dev_tools_hot_reload=True)
