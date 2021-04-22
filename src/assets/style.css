@@ -51,12 +51,13 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
 }
 
-.links-container > .cell {
+.links-container .cell {
     display: flex;
     border: 1px solid #ccc;
     border-radius: 8px;
     align-items: center;
     flex-direction: row;
+    color: #000;
 }
 
 .cell .column {
@@ -94,7 +95,7 @@ body {
 }
 
 a {
-    display: contents;
+    text-decoration: none;
 }
 
 

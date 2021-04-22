@@ -19,12 +19,12 @@ tickers = load_tickers("NYSE", "NASDAQ")
 keyed_tickers = {x.symbol: x for x in tickers}
 index = load_index("compiled_index_min10")
 
-
 # =======
 # FILTERS
 # =======
 
 
+# filter results dataframe to specific stock(s) based on current user selections
 def apply_ticker_filter(results: pd.DataFrame, stock: StockSelection, sector: str):
     f = None
     if stock.is_top_n():
@@ -36,13 +36,16 @@ def apply_ticker_filter(results: pd.DataFrame, stock: StockSelection, sector: st
         f = [keyed_tickers[stock.symbol]]
 
     if f is not None:
-        # apply filter
+        # apply filter by matching symbols
         results = results[results.symbol.isin(x.symbol for x in f)]
     return results
 
 
+# filter results dataframe to specific date range based on current user selection
 def apply_time_filter(results: pd.DataFrame, time_selection: str):
+    # parse selection value
     selection = TimeSelection.from_value(time_selection)
+    # filter to minimum date based on user selection
     if selection.min_date is not None:
         results = results[results.date >= pd.to_datetime(selection.min_date)]
     return results
@@ -53,26 +56,33 @@ def apply_time_filter(results: pd.DataFrame, time_selection: str):
 # ===============
 
 
+# base section heading component for UI
 def make_section_heading(title: str, info: str = None):
     return html.Div(children=[
         html.Div(className="section-header", children=title),
     ])
 
 
+# create the stock selection dropdown with all options
 def make_stock_dropdown():
     options = []
-    # add top options
+    # add top n options
     for n in [1, 2, 5, 10, 20]:
         options.append(dict(
             label=f"the top {n} stocks",
             value=StockSelection(top=n).value(),
         ))
+
+    # get unique set of symbols present in the index
+    indexed_symbols = sorted(set(index.symbol))
     # add symbol options
-    for ticker in tickers:
+    for s in indexed_symbols:
+        ticker = keyed_tickers[s]
         options.append(dict(
             label=f"({ticker.symbol}) {ticker.name}",
             value=StockSelection(symbol=ticker.symbol).value(),
         ))
+
     # make component
     return dcc.Dropdown(
         id="stock_selection",
@@ -83,6 +93,7 @@ def make_stock_dropdown():
     )
 
 
+# create the time range selection dropdown with specific options
 def make_time_dropdown():
     return dcc.Dropdown(
         id="time_selection",
@@ -99,16 +110,19 @@ def make_time_dropdown():
     )
 
 
+# create the industry selection dropdown based on the tickers loaded
 def make_category_dropdown():
-    # find unique categories given all tickers
-    unique_sectors = set(ticker.sector for ticker in tickers)
+    # make base option
     options = [
         dict(label="All Industries", value="all"),
     ]
+    # find unique categories given the indexed tickers
+    indexed_tickers = (keyed_tickers[x] for x in set(index.symbol))
+    unique_sectors = sorted(set(ticker.sector for ticker in indexed_tickers if ticker.sector is not None))
     # add each unique category
     for x in unique_sectors:
-        if x is not None:
-            options.append(dict(label=x, value=f"{x}"))
+        options.append(dict(label=x, value=x))
+    # create component
     return dcc.Dropdown(
         id="category_selection",
         options=options,
@@ -118,18 +132,22 @@ def make_category_dropdown():
     )
 
 
-def make_stock_link_cell(index: int, ticker: Ticker):
-    return html.Div(
-        className="cell",
-        children=[
-            html.Span(className="column index", children=index),
-            html.Span(className="column symbol", children=ticker.symbol),
-            html.Span(className="column name", children=ticker.name),
-            html.A(href=f"https://finance.yahoo.com/quote/{ticker.symbol}", target="_blank", children=[
+# create a stock link cell to Yahoo Finance for the financial information section
+def make_stock_link_cell(i: int, ticker: Ticker):
+    # nest visible cell inside clickable container so easier to navigate and use
+    return html.A(href=ticker.yahoo_finance_url(), target="_blank", children=[
+        html.Div(
+            className="cell",
+            children=[
+                # basic component that shows the ranking, symbol, and name of a ticker
+                html.Span(className="column index", children=i),
+                html.Span(className="column symbol", children=ticker.symbol),
+                html.Span(className="column name", children=ticker.name),
+                # purple indicator just to signify it's connected to Yahoo Finance
                 html.Span(className="indicator"),
-            ]),
-        ],
-    )
+            ],
+        ),
+    ])
 
 
 # ========
@@ -194,20 +212,23 @@ app.layout = html.Div([
 ])
 
 
+# control whether or not the industry selector will show based on the current option selected for stocks
 @app.callback(
     Output(component_id="category_container", component_property="style"),
     Input(component_id="stock_selection", component_property="value"),
 )
 def handle_category_visiblity(selected_stock):
+    # parse stock selection
     stock = StockSelection.from_value(selected_stock)
     if stock.is_top_n():
-        # show for selecting top n stocks
+        # show industries when selecting top n stocks
         return dict(display="contents")
     else:
-        # hide for selecting single stocks
+        # hide industries when selecting a single stock
         return dict(display="none")
 
 
+# control primary function of app by reading current user selections and controlling figures
 @app.callback(
     Output(component_id="trend_graph", component_property="figure"),
     Output(component_id="relative_trend_graph", component_property="figure"),
@@ -218,6 +239,7 @@ def handle_category_visiblity(selected_stock):
     Input(component_id="category_selection", component_property="value"),
 )
 def handle_visible_data(selected_stock, selected_time, selected_category):
+    # parse user stock selection
     stock = StockSelection.from_value(selected_stock)
 
     # reduce data to only selected stocks and time range

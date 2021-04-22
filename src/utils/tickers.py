@@ -13,6 +13,11 @@ class Ticker:
         self.sector = sector
         self.industry = industry
 
+    # generate link to yahoo finance for this stock
+    def yahoo_finance_url(self):
+        # based on Charlotte's research in using yahoo finance and looking at the pattern of the url
+        return f"https://finance.yahoo.com/quote/{self.symbol}"
+
     # convenience function to make debug statements more readable
     def __str__(self):
         return f"Ticker(symbol='{self.symbol}', name='{self.name}')"
