@@ -13,4 +13,4 @@ def clean_stock_name(name: str) -> str:
         i = name.find(e)
         if i != -1:
             name = name[:i + len(e)]
-    return name
+    return name.strip()

@@ -39,9 +39,16 @@ body {
 }
 
 .section-header {
-    font-size: 20px;
     padding-top: 40px;
     padding-bottom: 30px;
+}
+
+.section-header h2 {
+    font-size: 20px;
+}
+
+.section-header p {
+    font-size: 16px;
 }
 
 
@@ -101,6 +108,7 @@ a {
 
 
 .footer {
+    margin-top: 50px;
     padding: 30px;
     background: #21374a;
     color: white;

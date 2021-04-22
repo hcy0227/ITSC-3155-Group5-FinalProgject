@@ -2,12 +2,9 @@ import pandas as pd
 
 
 # load and cleanup all messages from the reddit dataset
-def load_messages(reduction: int = 1) -> pd.DataFrame:
+def load_messages(path: str) -> pd.DataFrame:
     # read only necessary columns from dataset
-    df = pd.read_csv("../data/reddit_wsb.csv", parse_dates=["timestamp"], usecols=["body", "timestamp"])
-    # optionally trim to every nth row
-    if reduction > 1:
-        df = df.iloc[::reduction, :]
+    df = pd.read_csv(path, parse_dates=["timestamp"], usecols=["body", "timestamp"])
     # filter to only rows with non-null body
     df = df[~df.body.isnull()]
     # remap the timestamps to only the date
@@ -22,10 +19,10 @@ def load_messages(reduction: int = 1) -> pd.DataFrame:
 
 
 # load pre-calculated index into a DataFrame
-def load_index(name: str) -> pd.DataFrame:
+def load_index(path: str) -> pd.DataFrame:
     # load necessary columns from csv
     df = pd.read_csv(
-        f"../data/{name}.csv",
+        path,
         usecols=["symbol", "date", "occurrences"],
         parse_dates=["date"],
     )

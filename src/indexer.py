@@ -5,12 +5,12 @@ from utils.tickers import Ticker, load_tickers
 
 
 # run indexing process to count occurrences of every stock in all messages
-def create_index(name: str, ts: t.List[Ticker], minimum_occurrences: int = 10):
+def create_index(path: str, messages_path: str, ts: t.List[Ticker], minimum_occurrences: int = 10):
     # load all messages from reddit dataset
-    df = load_messages()
+    df = load_messages(messages_path)
 
     # access file to output compiled index of symbol occurrences
-    with open(f"../data/{name}.csv", "w") as i_file:
+    with open(path, "w") as i_file:
         # write header
         i_file.write("symbol,date,occurrences\n")
 
@@ -51,6 +51,9 @@ def create_index(name: str, ts: t.List[Ticker], minimum_occurrences: int = 10):
 
 if __name__ == "__main__":
     # pre-calculate indexes so refined data is available for higher performance
-    tickers = load_tickers("NYSE", "NASDAQ")
-    create_index("compiled_index_min100", tickers, minimum_occurrences=100)
-    create_index("compiled_index_min10", tickers, minimum_occurrences=10)
+    tickers = load_tickers(
+        "../data/NYSE_stock_tickers.csv",
+        "../data/NASDAQ_stock_tickers.csv",
+    )
+    create_index("../data/compiled_index_min100.csv", "../data/reddit_web.csv", tickers, minimum_occurrences=100)
+    create_index("../data/compiled_index_min10.csv", "../data/reddit_web.csv", tickers, minimum_occurrences=10)

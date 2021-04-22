@@ -15,9 +15,13 @@ from utils.filters import StockSelection, TimeSelection
 # =========
 
 
-tickers = load_tickers("NYSE", "NASDAQ")
+tickers = load_tickers(
+    "../data/NYSE_stock_tickers.csv",
+    "../data/NASDAQ_stock_tickers.csv",
+)
 keyed_tickers = {x.symbol: x for x in tickers}
-index = load_index("compiled_index_min10")
+index = load_index("../data/compiled_index_min10.csv")
+
 
 # =======
 # FILTERS
@@ -58,8 +62,9 @@ def apply_time_filter(results: pd.DataFrame, time_selection: str):
 
 # base section heading component for UI
 def make_section_heading(title: str, info: str = None):
-    return html.Div(children=[
-        html.Div(className="section-header", children=title),
+    return html.Div(className="section-header", children=[
+        html.H2(children=title),
+        html.P(children=info),
     ])
 
 
@@ -176,15 +181,15 @@ app.layout = html.Div([
 
     html.Div(className="central-content", children=[
         # graphs
-        make_section_heading("Stock Symbol Frequency"),
+        make_section_heading("Stock Symbol Frequency", info="Understand the trends in people mentioning specific stocks over time"), #The number of times a stock has been mentioned in all messages by day
         dcc.Graph(id="trend_graph"),
-        make_section_heading("Relative Stock Symbol Frequency"),
+        make_section_heading("Relative Stock Symbol Frequency", info="See how stocks compares to others mentioned on the same day"), #The percentage of occurrences of each stock compared to the total occurrences of all stocks by day
         dcc.Graph(id="relative_trend_graph"),
-        make_section_heading("Stock Rankings"),
+        make_section_heading("Stock Rankings", info="Compare total occurrences of each stock for the selected date range"),
         dcc.Graph(id="ranking_graph"),
 
         # links
-        make_section_heading("Financial Information"),
+        make_section_heading("Financial Information", info="View each stock's price trend on Yahoo Finance"),
         html.Div(id="links_container", className="links-container"),
 
     ]),
