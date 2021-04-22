@@ -12,7 +12,7 @@ def load_messages(path: str) -> pd.DataFrame:
     # remove old timestamp column
     df.drop(columns=["timestamp"], inplace=True)
     # clean body of all messages to only letters and whitespace
-    df.body = df.body.str.upper().str.replace(r"[^a-zA-Z\s]", " ", regex=True)
+    df.body = df.body.str.replace(r"[^a-zA-Z\s]", " ", regex=True)
     # sort by timestamp
     df.sort_values("date", inplace=True)
     return df

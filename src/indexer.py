@@ -55,5 +55,4 @@ if __name__ == "__main__":
         "../data/NYSE_stock_tickers.csv",
         "../data/NASDAQ_stock_tickers.csv",
     )
-    create_index("../data/compiled_index_min100.csv", "../data/reddit_web.csv", tickers, minimum_occurrences=100)
-    create_index("../data/compiled_index_min10.csv", "../data/reddit_web.csv", tickers, minimum_occurrences=10)
+    create_index("../data/compiled_index_min10_keepcase.csv", "../data/reddit_wsb.csv", tickers, minimum_occurrences=10)

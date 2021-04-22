@@ -20,7 +20,7 @@ tickers = load_tickers(
     "../data/NASDAQ_stock_tickers.csv",
 )
 keyed_tickers = {x.symbol: x for x in tickers}
-index = load_index("../data/compiled_index_min10.csv")
+index = load_index("../data/compiled_index_min10_keepcase.csv")
 
 
 # =======
@@ -82,11 +82,12 @@ def make_stock_dropdown():
     indexed_symbols = sorted(set(index.symbol))
     # add symbol options
     for s in indexed_symbols:
-        ticker = keyed_tickers[s]
-        options.append(dict(
-            label=f"({ticker.symbol}) {ticker.name}",
-            value=StockSelection(symbol=ticker.symbol).value(),
-        ))
+        ticker = keyed_tickers.get(s)
+        if ticker is not None:
+            options.append(dict(
+                label=f"({ticker.symbol}) {ticker.name}",
+                value=StockSelection(symbol=ticker.symbol).value(),
+            ))
 
     # make component
     return dcc.Dropdown(
@@ -122,7 +123,7 @@ def make_category_dropdown():
         dict(label="All Industries", value="all"),
     ]
     # find unique categories given the indexed tickers
-    indexed_tickers = (keyed_tickers[x] for x in set(index.symbol))
+    indexed_tickers = (keyed_tickers.get(x) for x in set(index.symbol) if keyed_tickers.get(x) is not None)
     unique_sectors = sorted(set(ticker.sector for ticker in indexed_tickers if ticker.sector is not None))
     # add each unique category
     for x in unique_sectors:
@@ -181,12 +182,13 @@ app.layout = html.Div([
 
     html.Div(className="central-content", children=[
         # graphs
-        make_section_heading("Stock Symbol Frequency", info="Understand the trends in people mentioning specific stocks over time"), #The number of times a stock has been mentioned in all messages by day
-        dcc.Graph(id="trend_graph"),
-        make_section_heading("Relative Stock Symbol Frequency", info="See how stocks compares to others mentioned on the same day"), #The percentage of occurrences of each stock compared to the total occurrences of all stocks by day
-        dcc.Graph(id="relative_trend_graph"),
-        make_section_heading("Stock Rankings", info="Compare total occurrences of each stock for the selected date range"),
+        make_section_heading("Stock Rankings", info="Compare stocks based on their overall popularity"),
         dcc.Graph(id="ranking_graph"),
+        make_section_heading("Stock Symbol Frequency", info="Understand the trends in people mentioning specific stocks over time"),
+        dcc.Graph(id="trend_graph"),
+        make_section_heading("Relative Stock Symbol Frequency", info="See how stocks compare to others mentioned on the same day"),
+        dcc.Graph(id="relative_trend_graph"),
+
 
         # links
         make_section_heading("Financial Information", info="View each stock's price trend on Yahoo Finance"),
@@ -267,6 +269,7 @@ def handle_visible_data(selected_stock, selected_time, selected_category):
         yaxis_title="Number of Occurrences",
         legend=dict(
             traceorder="reversed",
+            y=0.9,
         ),
         margin=dict(t=0),
     )
@@ -277,7 +280,13 @@ def handle_visible_data(selected_stock, selected_time, selected_category):
         xaxis_title="Time",
         yaxis_title="Percentage of Occurrences",
         margin=dict(t=0),
+        legend=dict(
+            y=0.9,
+        ),
     )
+
+    # only show markers on trend graph when not too much data
+    show_trend_markers = selected_time not in {"3month", "year", "all"}
 
     # add each ticker to the trend graphs
     for ticker in result_tickers:
@@ -292,7 +301,7 @@ def handle_visible_data(selected_stock, selected_time, selected_category):
         trend_fig.add_trace(go.Scatter(
             x=trend.index,
             y=trend,
-            mode="lines+markers",
+            mode="lines+markers" if show_trend_markers else "lines",
             line_shape="spline",
             name=ticker.symbol,
         ))

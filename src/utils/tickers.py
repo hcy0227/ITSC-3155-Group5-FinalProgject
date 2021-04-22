@@ -4,6 +4,13 @@ import typing as t
 from utils.cleaners import clean_symbol, clean_stock_name
 
 
+# ignore these symbols
+IGNORE_SYMBOLS = {
+    "A",        # capital A is a common word at beginning of sentence so don't count it as a stock
+    "GDP",      # gross domestic product
+}
+
+
 # class to hold stock information
 class Ticker:
     # initialize with descriptive attributes
@@ -51,7 +58,13 @@ def load_tickers(*paths: str) -> t.List[Ticker]:
         # map rows of file to cleaner Ticker class
         for r in df.itertuples():
             x = Ticker(clean_symbol(r.Symbol), clean_stock_name(r.Name), r.Sector, r.Industry)
-            # only return tickers with at least 3 letters in symbol, so searching is more accurate
-            if len(x.symbol) >= 3:
+            # ignore tickers that don't match the cleaned symbol
+            if x.symbol != r.Symbol:
+                continue
+            # ignore tickers without a sector
+            if x.sector is None:
+                continue
+            # only return tickers not in the ignore list
+            if x.symbol not in IGNORE_SYMBOLS:
                 tickers.append(x)
     return tickers
