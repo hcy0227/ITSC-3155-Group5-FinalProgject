@@ -191,7 +191,8 @@ app.layout = html.Div([
             html.P(
                 "Investing is often intimidating and can be risky if you feel like you have made a bad "
                 "decision. While we are not recommending what stocks you are investing in, we are here to provide "
-                "you with stocks that may be trending like GameStop was in January 2021."),
+                "you with stocks that may be trending like GameStop was in January 2021."
+            ),
             html.P(
                 "You can view the popularity of various stocks over time using the graphs below, and once you find a "
                 "stock you want to know more about, go to the bottom of the page and click the one you are interested "
