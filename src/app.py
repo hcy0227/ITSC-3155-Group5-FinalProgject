@@ -181,6 +181,24 @@ app.layout = html.Div([
     ]),
 
     html.Div(className="central-content", children=[
+        # explanation
+        make_section_heading("Introduction", info=[
+            html.P(
+                "Welcome to WallStreetBets Tracker! WallStreetBets Tracker is designed to allow you to "
+                "see how often stocks are mentioned in the Reddit/WallStreetBets forum. This way you can "
+                "see if a stock is becoming more popular!"
+            ),
+            html.P(
+                "Investing is often intimidating and can be risky if you feel like you have made a bad "
+                "decision. While we are not recommending what stocks you are investing in, we are here to provide "
+                "you with stocks that may be trending like GameStop was in January 2021."),
+            html.P(
+                "You can view the popularity of various stocks over time using the graphs below, and once you find a "
+                "stock you want to know more about, go to the bottom of the page and click the one you are interested "
+                "in. It will take you to the stock’s Yahoo Finance page where you can find the financial information "
+                "about the stock before you invest. Happy Investing!"
+            ),
+        ]),
         # graphs
         make_section_heading("Stock Rankings", info="Compare stocks based on their overall popularity"),
         dcc.Graph(id="ranking_graph"),
